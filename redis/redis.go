@@ -2,25 +2,28 @@ package redis
 
 import (
 	"errors"
+	"github.com/gomodule/redigo/redis"
 	"time"
 )
 
-type RedisConner interface {
-	Do(cmdName string, args ...interface{}) (reply interface{}, err error)
-}
-
 type RedisLocker struct {
-	conn RedisConner
+	pool *redis.Pool
 }
 
-func NewRedisLocker(conn RedisConner) *RedisLocker {
+func NewRedisLocker(pool *redis.Pool) *RedisLocker {
 	return &RedisLocker{
-		conn: conn,
+		pool: pool,
 	}
 }
 
 func (locker *RedisLocker) Lock(key string, expiresIn time.Duration) error {
-	result, err := locker.conn.Do("SET", key, "ok", "EX", int(expiresIn/time.Second), "NX")
+	if locker.pool == nil {
+		return errors.New("pool is nil")
+	}
+
+	conn := locker.pool.Get()
+	defer func() { _ = conn.Close() }()
+	result, err := conn.Do("SET", key, "ok", "EX", int(expiresIn/time.Second), "NX")
 	if err != nil {
 		return err
 	}
@@ -33,6 +36,13 @@ func (locker *RedisLocker) Lock(key string, expiresIn time.Duration) error {
 }
 
 func (locker *RedisLocker) Unlock(key string) error {
-	_, err := locker.conn.Do("DEL", key)
+	if locker.pool == nil {
+		return errors.New("pool is nil")
+	}
+
+	conn := locker.pool.Get()
+	defer func() { _ = conn.Close() }()
+
+	_, err := conn.Do("DEL", key)
 	return err
 }
