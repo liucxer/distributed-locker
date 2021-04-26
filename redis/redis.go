@@ -28,7 +28,7 @@ func (locker *RedisLocker) Lock(key string, expiresIn time.Duration) error {
 		return err
 	}
 
-	if result != nil {
+	if result != "OK" {
 		return errors.New("lock error")
 	}
 

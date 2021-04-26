@@ -28,7 +28,10 @@ func TestRedisLocker_Lock(t *testing.T) {
 	}
 
 	client := NewRedisLocker(pool)
-	err := client.Lock("a", 10*time.Second)
+	err := client.Unlock("a")
+	require.NoError(t, err)
+
+	err = client.Lock("a", 10*time.Second)
 	require.NoError(t, err)
 
 	err = client.Lock("a", 10*time.Second)
